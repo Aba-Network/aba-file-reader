@@ -14,11 +14,18 @@ The second is a file storage of arbitrary file type that can be stored across mu
 
 ## Install
 
+npm install and create "temp" subdirectory, used by file reads for storing chunks and final files
+
+```
 npm install
+mkdir temp
+```
 
 ## Build code
 
+```
 npm run build
+```
 
 ## Read files from the blockchain
 
