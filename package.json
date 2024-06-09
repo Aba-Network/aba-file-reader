@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "bip39": "^3.1.0",
+    "chia-bls": "^1.0.1",
+    "chia-rpc": "^1.1.1",
+    "chia-wallet-lib": "^1.1.0",
+    "clvm-lib": "^1.0.0",
+    "crypto": "^1.0.1",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.3.1"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node index.ts"
+  },
+  "name": "aba-file-reader",
+  "version": "1.0.0",
+  "main": "server.js",
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/crypto-js": "^4.2.1",
+    "@types/node": "^20.10.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
