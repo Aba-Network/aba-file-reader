@@ -45,6 +45,7 @@ npm run start read a5719fce45ef242fdd41d04fcee7c8bc14ffe5cc2edb253c6c3aadf921ed0
 
 ```
 npm run start get coinid
+rm temp/*.chunk
 ```
 
 where coinid is the hash id of the coin containing the description.json or description.json.gz
