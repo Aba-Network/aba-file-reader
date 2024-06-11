@@ -41,6 +41,8 @@ where coinid is the coin's hash, for example
 npm run start read a5719fce45ef242fdd41d04fcee7c8bc14ffe5cc2edb253c6c3aadf921ed0031
 ```
 
+This will output the message to standard output.
+
 #### Extract a file stored on multiple coins
 
 ```
@@ -50,7 +52,7 @@ rm temp/*.chunk
 
 where coinid is the hash id of the coin containing the description.json or description.json.gz
 
-The file will be located in the temp subdirectory of where you run it, as will the individual chunk files that make up the overall file
+The file will be located in the temp subdirectory of where you run it, as will the individual chunk files that make up the overall file. The filename will be displayed while running the command.
 
 ## Room for Improvement
 

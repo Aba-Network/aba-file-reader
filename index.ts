@@ -106,20 +106,20 @@ async function writeBinaryFile(filePath: string, data: Uint8Array): Promise<void
 async function getCoinMessage(syncInfo: SyncInfo): Promise<Program> {
     console.log("getcoinmessage " + (new Date()).toLocaleString());
     const coinRecord = await node.getCoinRecordByName(syncInfo.parent);
-    console.log("coin gotten by name " + (new Date()).toLocaleString());
+    //console.log("coin gotten by name " + (new Date()).toLocaleString());
     if (!coinRecord.success) { console.log(syncInfo.parent); }
     if (!coinRecord.success) throw new Error(coinRecord.error);
 
-    console.log("get puz and solution " + (new Date()).toLocaleString());
+    //console.log("get puz and solution " + (new Date()).toLocaleString());
     const puzzleAndSolution = await node.getPuzzleAndSolution(
         syncInfo.parent,
         coinRecord.coin_record.spent_block_index
     );
     if (!puzzleAndSolution.success) throw new Error(puzzleAndSolution.error);
-    console.log("gotten puz soln " + (new Date()).toLocaleString());
+    //console.log("gotten puz soln " + (new Date()).toLocaleString());
     const spend = puzzleAndSolution.coin_solution;
     const sanitized = sanitizeHex(spend.solution)
-    console.log("sanitized done " + (new Date()).toLocaleString());
+    //console.log("sanitized done " + (new Date()).toLocaleString());
     const solution = Program.deserializeHex(sanitized).toList();
     console.log("deserialized " + (new Date()).toLocaleString());
     return solution[0];
@@ -144,9 +144,9 @@ async function renameToHashes() {
 
 
 async function getPublishedFile(fileCoinId: string, fileIndex?: string): Promise<[boolean, string, string[]]> {
-    // get inscribed file from the blockchain
+    // get published file from the blockchain
     const date = new Date();
-    console.log(date.toLocaleString());
+    //console.log(date.toLocaleString());
 
     // get coin w/ index of hashes etc.; if not available use fileIndex
     const eveCoinId = fileCoinId; //process.env.FILE_COIN_ID!;
@@ -180,10 +180,10 @@ async function getPublishedFile(fileCoinId: string, fileIndex?: string): Promise
           const current = coinId;
           const parent = current;
             if (current != eveCoinId) {
-                console.log((new Date()).toLocaleString());
+                //console.log((new Date()).toLocaleString());
                 msg = (await getCoinMessage({ parent, current, })).toBytes(); // current coin's message
                 console.log(msg.length);
-                console.log((new Date()).toLocaleString());
+                //console.log((new Date()).toLocaleString());
                 //if (fileIndexObj.mediaType == "text/plain") {
                 //    await writeTextFile("temp/" + current + ".chunk", msg);
                 //}
@@ -229,22 +229,23 @@ async function getPublishedFile(fileCoinId: string, fileIndex?: string): Promise
             
             await fs.appendFileSync(outfile, await fs.readFileSync("temp/" + hash + ".chunk"));
         }
-        console.log("file saved as " + outfile);
-        // todo check the hash!
+        // check the hash
         const fileBuffer = fs.readFileSync(outfile);
         const sha256sum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
         if (sha256sum === fileIndexObj.hash) {
-            console.log("overall file hash matches");
+            console.log("File hash: " + sha256sum);
+            console.log("Success. File hash matches.");
             complete = true;
+            console.log("File saved as: " + outfile);
         }
         else {
             console.log("FAIL file hash doesn't match up");
         }
     }
     else {
-        console.log("File incomplete. Only " + numChunks + " of " + fileIndexObj.hashes.length + " chunks found");
+        console.log("FAIL File incomplete. Only " + numChunks + " of " + fileIndexObj.hashes.length + " chunks found");
     }
-    console.log((new Date()).toLocaleString());
+    //console.log((new Date()).toLocaleString());
     return [complete, current, doneHashes];
 }
 
