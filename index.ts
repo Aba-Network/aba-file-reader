@@ -3,6 +3,7 @@ import { FullNode, sanitizeHex, toCoinId } from 'chia-rpc';
 import { Program } from 'clvm-lib';
 import dotenv from 'dotenv';
 import fs from 'fs';
+const stream = require('stream/promises');
 import os from 'os';
 import path from 'path';
 import * as crypto from 'crypto';
@@ -142,30 +143,34 @@ async function renameToHashes() {
     });
 }
 
-
+/*
+ next aba file reader upgrade
+ continue w/ already downloaded file
+check if chunk is already saved before extracting
+rename each chunk as its completed?
+renameToHash(chunkFileName)
+ at completion, output start and end time
+*/
 async function getPublishedFile(fileCoinId: string, fileIndex?: string): Promise<[boolean, string, string[]]> {
     // get published file from the blockchain
     const date = new Date();
     //console.log(date.toLocaleString());
 
     // get coin w/ index of hashes etc.; if not available use fileIndex
-    const eveCoinId = fileCoinId; //process.env.FILE_COIN_ID!;
+    const eveCoinId = fileCoinId;
     let current = eveCoinId;
     let parent = current;
     let fileIndexObj = JSON.parse("{}");
     // if we're given fileIndex, we'll use that
     if (fileIndex === undefined) {
-        // first we get the index / description.json NOTE TODO: still assumes it's the first one
-        // FIX THIS LATER
+        // first we get the index / description.json
         fileIndex = (await getCoinMessage({parent, current})).toString().replace(/^'|'$/g, '');
         console.log(fileIndex);
     }
     //console.log('File Index Info:', indexMessage);
 
-    // parse the chunks from the index TODO going back in the inheritance of the spends
-    //else {
     fileIndexObj = JSON.parse(fileIndex.trim());
-    //}
+    
     //console.log("# of chunks: " + fileIndexObj.hashChunks.length);
     console.log(fileIndexObj);
     // go through sequence of hashes and save each chunk
@@ -230,8 +235,9 @@ async function getPublishedFile(fileCoinId: string, fileIndex?: string): Promise
             await fs.appendFileSync(outfile, await fs.readFileSync("temp/" + hash + ".chunk"));
         }
         // check the hash
-        const fileBuffer = fs.readFileSync(outfile);
-        const sha256sum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+        //const fileBuffer = fs.readFileSync(outfile);
+        const sha256sum = await computeHash(outfile);
+        //const sha256sum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
         if (sha256sum === fileIndexObj.hash) {
             console.log("File hash: " + sha256sum);
             console.log("Success. File hash matches.");
@@ -249,10 +255,136 @@ async function getPublishedFile(fileCoinId: string, fileIndex?: string): Promise
     return [complete, current, doneHashes];
 }
 
+
+async function computeHash(filepath: string): Promise<string>{
+  const input = fs.createReadStream(filepath);
+  const hash = crypto.createHash('sha256');
+  
+  // Connect the output of the `input` stream to the input of `hash`
+  // and let Node.js do the streaming
+  await stream.pipeline(input, hash);
+
+  return hash.digest('hex');
+}
+
+// temporary function, in anticipation of upgrading getPublishedFile
+//  for when chunks have already been downloaded and renamed
+async function getTestPublishedFile(fileCoinId: string, fileIndex?: string): Promise<[boolean, string, string[]]> {
+    
+    // get published file from the blockchain
+    const date = new Date();
+    //console.log(date.toLocaleString());
+
+    // get coin w/ index of hashes etc.; if not available use fileIndex
+    const eveCoinId = fileCoinId;
+    let current = eveCoinId;
+    let parent = current;
+    let fileIndexObj = JSON.parse("{}");
+    // if we're given fileIndex, we'll use that
+    if (fileIndex === undefined) {
+        // first we get the index / description.json
+        fileIndex = (await getCoinMessage({parent, current})).toString().replace(/^'|'$/g, '');
+        console.log(fileIndex);
+    }
+    //console.log('File Index Info:', indexMessage);
+
+    fileIndexObj = JSON.parse(fileIndex.trim());
+    
+    //console.log("# of chunks: " + fileIndexObj.hashChunks.length);
+    console.log(fileIndexObj);
+    // go through sequence of hashes and save each chunk
+    let chunks = 0;
+    let msg = new Uint8Array(0);
+    const hashChunks = fileIndexObj.hashChunks;
+    console.log(hashChunks);
+    /*
+    for (const hash in hashChunks) {
+        if (Object.prototype.hasOwnProperty.call(hashChunks, hash)) {
+          const coinId = hashChunks[hash];
+          console.log(`Hash: ${hash}, Coin ID: ${coinId}`);
+          const current = coinId;
+          const parent = current;
+            if (current != eveCoinId) {
+                //console.log((new Date()).toLocaleString());
+                msg = (await getCoinMessage({ parent, current, })).toBytes(); // current coin's message
+                console.log(msg.length);
+                //console.log((new Date()).toLocaleString());
+                //if (fileIndexObj.mediaType == "text/plain") {
+                //    await writeTextFile("temp/" + current + ".chunk", msg);
+                //}
+                await writeBinaryFile("temp/" + current + ".chunk", msg);
+                console.log((new Date()).toLocaleString());
+            }
+
+            // Continue with the child coin as the new singleton
+            chunks++;
+            console.log("new current: " + current + " chunk #: " + chunks);
+
+        }
+    }
+
+    // hash and rename chunks
+    await renameToHashes(); // TODO something ain't working yet; what if there's collision of hash vs coinid?
+    */
+
+    // report on missing chunks if incomplete
+    let numChunks = 0;
+    let doneHashes: string[] = [];
+    for (const hash in hashChunks) {
+            // check if file hash.chunk exists
+            const filePath = "temp/" + hash + ".chunk";
+            if (fs.existsSync(filePath)) { 
+                doneHashes.push(hash);
+                numChunks++;
+            }
+    }
+
+    // concat chunks if complete
+    let complete = false;
+    if ( numChunks == Object.keys(hashChunks).length) {
+        // TODO really do security review on all these file operations
+        const outfile = path.join('temp/',path.basename(fileIndexObj.filename));
+        try {  
+            fs.unlinkSync(outfile); 
+        }
+        catch (err) { }
+        //const flags = fs.constants.O_WRONLY | fs.constants.O_APPEND;
+        //const mode = fs.constants.O_BINARY;
+        for (const hash in hashChunks) {
+            console.log(hash);
+            
+            await fs.appendFileSync(outfile, await fs.readFileSync("temp/" + hash + ".chunk"));
+        }
+        // check the hash
+        //const fileBuffer = fs.readFileSync(outfile);
+        //const sha256sum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+        const sha256sum = await computeHash(outfile);
+
+        if (sha256sum === fileIndexObj.hash) {
+            console.log("File hash: " + sha256sum);
+            console.log("Success. File hash matches.");
+            complete = true;
+            console.log("File saved as: " + outfile);
+        }
+        else {
+            console.log("FAIL file hash doesn't match up");
+        }
+    }
+    else {
+        console.log("FAIL File incomplete. Only " + numChunks + " of " + fileIndexObj.hashes.length + " chunks found");
+    }
+    //console.log((new Date()).toLocaleString());
+    return [complete, current, doneHashes];
+}
+
+
 const arg1 = process.argv[2] || '2';
 if (arg1 === '2' || arg1 === 'p' || arg1 === 'read') {
     printMessage(process.argv[3]);
 }
 if (arg1 === '6' || arg1 === 'g' || arg1 === 'get') {
     getPublishedFile(process.argv[3]);
+}
+if (arg1 === '7' || arg1 === 't' || arg1 === 'tget') {
+    getTestPublishedFile(process.argv[3]);
 }
